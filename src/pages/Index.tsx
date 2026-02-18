@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { fetchAnimeList, AnimeItem } from "@/lib/api";
+import { fetchAnimeList, AnimeItem, getAnimeName, getAnimeCover, getAnimeGenres, getAnimeScore, getAnimeStatus } from "@/lib/api";
 import { getWatchProgress, getWatchlist, WatchProgress, WatchlistItem } from "@/lib/storage";
 import Navbar from "@/components/Navbar";
 import HeroSection from "@/components/HeroSection";
@@ -29,7 +29,7 @@ export default function Index() {
   const byGenre = useMemo(() => {
     const map: Record<string, AnimeItem[]> = {};
     anime.forEach(a => {
-      a.meta?.genres?.forEach(g => {
+      getAnimeGenres(a).forEach(g => {
         if (!map[g]) map[g] = [];
         if (map[g].length < 20) map[g].push(a);
       });
@@ -38,17 +38,17 @@ export default function Index() {
   }, [anime]);
 
   const popular = useMemo(() =>
-    [...anime].sort((a, b) => (b.meta?.averageScore || 0) - (a.meta?.averageScore || 0)).slice(0, 20),
+    [...anime].sort((a, b) => (getAnimeScore(b) || 0) - (getAnimeScore(a) || 0)).slice(0, 20),
     [anime]
   );
 
   const recent = useMemo(() =>
-    [...anime].filter(a => a.meta?.status === "RELEASING").slice(0, 20),
+    [...anime].filter(a => getAnimeStatus(a) === "RELEASING").slice(0, 20),
     [anime]
   );
 
   const trending = useMemo(() =>
-    [...anime].sort((a, b) => (b.meta?.popularity || 0) - (a.meta?.popularity || 0)).slice(0, 20),
+    [...anime].sort((a, b) => (b.episode_count || 0) - (a.episode_count || 0)).slice(0, 20),
     [anime]
   );
 
@@ -68,12 +68,10 @@ export default function Index() {
       ) : error ? (
         <div className="pt-16 min-h-screen flex items-center justify-center">
           <div className="text-center space-y-4">
-            <div className="w-16 h-16 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
-              <span className="text-3xl">⚡</span>
-            </div>
+            <div className="w-16 h-16 mx-auto rounded-full bg-primary/10 flex items-center justify-center text-3xl">⚡</div>
             <p className="text-primary text-lg font-display font-bold">Failed to load</p>
             <p className="text-muted-foreground text-sm max-w-xs mx-auto">{error}</p>
-            <p className="text-muted-foreground text-xs">The API might be waking up (free tier). Try again in 30s.</p>
+            <p className="text-muted-foreground text-xs">The API might be waking up. Try again in 30s.</p>
             <button onClick={() => window.location.reload()} className="bg-primary text-primary-foreground px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
               Retry
             </button>
@@ -88,8 +86,8 @@ export default function Index() {
               items={watchlistItems}
               onRemove={(name) => setWatchlistItems(prev => prev.filter(w => w.animeName !== name))}
             />
-            {trending.length > 0 && <AnimeRow title="🔥 Trending" anime={trending} linkTo="/search" />}
-            <AnimeRow title="⭐ Most Popular" anime={popular} linkTo="/search" />
+            {trending.length > 0 && <AnimeRow title="🔥 Most Active" anime={trending} linkTo="/search" />}
+            <AnimeRow title="⭐ Top Rated" anime={popular} linkTo="/search" />
             {recent.length > 0 && <AnimeRow title="📺 Currently Airing" anime={recent} linkTo="/search" />}
             {Object.entries(byGenre).slice(0, 8).map(([genre, items]) => (
               <AnimeRow key={genre} title={genre} anime={items} linkTo={`/genre/${genre}`} />

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { fetchAnimeInfo, AnimeDetail as AnimeDetailType, getAnimeName } from "@/lib/api";
+import { fetchAnimeInfo, AnimeDetail as AnimeDetailType, getAnimeName, getAnimeCover, getAnimeBanner, getAnimeGenres, getAnimeScore } from "@/lib/api";
 import { addToWatchlist, removeFromWatchlist, isInWatchlist, getLastWatched } from "@/lib/storage";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -11,6 +11,7 @@ export default function AnimeDetailPage() {
   const { name } = useParams();
   const [data, setData] = useState<AnimeDetailType | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [activeSeason, setActiveSeason] = useState(0);
   const [showAllChars, setShowAllChars] = useState(false);
   const [inWatchlist, setInWatchlist] = useState(false);
@@ -21,16 +22,17 @@ export default function AnimeDetailPage() {
   useEffect(() => {
     if (!decodedName) return;
     setLoading(true);
+    setError("");
     setInWatchlist(isInWatchlist(decodedName));
     fetchAnimeInfo(decodedName)
       .then(setData)
-      .catch(console.error)
+      .catch(e => setError(e.message))
       .finally(() => setLoading(false));
   }, [decodedName]);
 
   const toggleWatchlist = () => {
     if (!data) return;
-    const title = getAnimeName({ anime_name: data.anime_name, meta: data.meta });
+    const title = getAnimeName(data);
     if (inWatchlist) {
       removeFromWatchlist(data.anime_name);
       setInWatchlist(false);
@@ -39,9 +41,9 @@ export default function AnimeDetailPage() {
       addToWatchlist({
         animeName: data.anime_name,
         title,
-        cover: data.meta?.image?.cover,
-        genres: data.meta?.genres,
-        score: data.meta?.averageScore,
+        cover: getAnimeCover(data),
+        genres: getAnimeGenres(data),
+        score: getAnimeScore(data),
         addedAt: Date.now(),
       });
       setInWatchlist(true);
@@ -58,28 +60,48 @@ export default function AnimeDetailPage() {
     <div className="min-h-screen">
       <Navbar />
       <div className="pt-16 h-[60vh] shimmer" />
-    </div>
-  );
-
-  if (!data) return (
-    <div className="min-h-screen">
-      <Navbar />
-      <div className="pt-32 text-center">
-        <p className="text-xl text-primary mb-4">Anime not found</p>
-        <Link to="/" className="text-sm text-neon hover:underline">Go Home</Link>
+      <div className="container mt-4 space-y-4">
+        <div className="flex gap-6">
+          <div className="w-40 sm:w-52 aspect-[2/3] shimmer rounded-lg" />
+          <div className="flex-1 space-y-3 pt-4">
+            <div className="h-8 w-3/4 shimmer rounded" />
+            <div className="h-4 w-1/2 shimmer rounded" />
+            <div className="h-4 w-full shimmer rounded" />
+            <div className="h-4 w-full shimmer rounded" />
+          </div>
+        </div>
       </div>
     </div>
   );
 
-  const title = getAnimeName({ anime_name: data.anime_name, meta: data.meta });
-  const meta = data.meta;
-  const banner = meta?.image?.banner;
-  const cover = meta?.image?.cover;
-  const desc = meta?.description?.replace(/<[^>]*>/g, "");
+  if (error || !data) return (
+    <div className="min-h-screen">
+      <Navbar />
+      <div className="pt-32 text-center space-y-4">
+        <p className="text-xl text-primary font-display font-bold">Failed to load anime</p>
+        <p className="text-muted-foreground text-sm">{error}</p>
+        <Link to="/" className="inline-block bg-secondary px-5 py-2 rounded-lg text-sm border border-border">Go Home</Link>
+      </div>
+    </div>
+  );
+
+  const title = getAnimeName(data);
+  const banner = getAnimeBanner(data);
+  const cover = getAnimeCover(data);
+  const genres = getAnimeGenres(data);
+  const score = getAnimeScore(data);
+  const desc = (data.description || data.meta?.description || "").replace(/<[^>]*>/g, "");
   const seasons = data.episodes?.seasons || [];
   const currentEps = seasons[activeSeason]?.episodes || [];
-  const characters = meta?.characters || [];
+  const characters = data.characters || data.meta?.characters || [];
   const displayChars = showAllChars ? characters : characters.slice(0, 12);
+  const studios = data.studios || data.meta?.studios || [];
+  const status = data.status || data.meta?.status;
+  const type = data.type || data.meta?.type;
+  const totalEps = data.totalEpisodes || data.meta?.totalEpisodes;
+  const duration = data.episodeDuration || data.meta?.episodeDuration;
+  const startYear = data.startDate?.year || data.meta?.startDate?.year;
+  const trailer = data.trailer?.url || data.meta?.trailer?.url;
   const lastWatched = getLastWatched(data.anime_name);
 
   return (
@@ -88,7 +110,11 @@ export default function AnimeDetailPage() {
 
       {/* Banner */}
       <div className="relative h-[50vh] sm:h-[60vh]">
-        {banner && <img src={banner} alt="" className="absolute inset-0 w-full h-full object-cover" />}
+        {banner ? (
+          <img src={banner} alt="" className="absolute inset-0 w-full h-full object-cover" />
+        ) : (
+          <div className="absolute inset-0 bg-secondary" />
+        )}
         <div className="absolute inset-0 gradient-overlay" />
         <div className="absolute inset-0 gradient-overlay-left" />
       </div>
@@ -98,40 +124,40 @@ export default function AnimeDetailPage() {
         <div className="flex flex-col sm:flex-row gap-6">
           {cover && (
             <div className="flex-shrink-0">
-              <img src={cover} alt={title} className="w-40 sm:w-52 rounded-lg shadow-2xl neon-border" />
+              <img src={cover} alt={title} className="w-40 sm:w-52 rounded-xl shadow-2xl neon-border" />
             </div>
           )}
           <div className="flex-1 min-w-0 pt-4">
-            <h1 className="font-display font-black text-3xl sm:text-4xl mb-2">{title}</h1>
-            {meta?.title?.romaji && meta.title.romaji !== title && (
-              <p className="text-muted-foreground text-sm mb-3">{meta.title.romaji}</p>
+            <h1 className="font-display font-black text-3xl sm:text-4xl mb-2 drop-shadow-lg">{title}</h1>
+            {data.meta?.title?.romaji && data.meta.title.romaji !== title && (
+              <p className="text-muted-foreground text-sm mb-3">{data.meta.title.romaji}</p>
             )}
 
             <div className="flex flex-wrap items-center gap-3 mb-4 text-sm">
-              {meta?.averageScore && (
-                <span className="flex items-center gap-1 text-yellow-400">
-                  <Star size={14} className="fill-yellow-400" /> {(meta.averageScore / 10).toFixed(1)}
+              {score && (
+                <span className="flex items-center gap-1 text-yellow-400 font-semibold">
+                  <Star size={14} className="fill-yellow-400" /> {(score / 10).toFixed(1)}
                 </span>
               )}
-              {meta?.status && <span className="bg-primary/20 text-primary px-2 py-0.5 rounded text-xs font-medium">{meta.status}</span>}
-              {meta?.type && <span className="flex items-center gap-1 text-muted-foreground"><Tv size={14} /> {meta.type}</span>}
-              {meta?.totalEpisodes && <span className="text-muted-foreground">{meta.totalEpisodes} eps</span>}
-              {meta?.episodeDuration && <span className="flex items-center gap-1 text-muted-foreground"><Clock size={14} /> {meta.episodeDuration}min</span>}
-              {meta?.startDate?.year && <span className="flex items-center gap-1 text-muted-foreground"><Calendar size={14} /> {meta.startDate.year}</span>}
+              {status && <span className="bg-primary/20 text-primary px-2 py-0.5 rounded text-xs font-medium">{status}</span>}
+              {type && <span className="flex items-center gap-1 text-muted-foreground"><Tv size={14} /> {type}</span>}
+              {totalEps && <span className="text-muted-foreground">{totalEps} eps</span>}
+              {duration && <span className="flex items-center gap-1 text-muted-foreground"><Clock size={14} /> {duration}min</span>}
+              {startYear && <span className="flex items-center gap-1 text-muted-foreground"><Calendar size={14} /> {startYear}</span>}
             </div>
 
             <div className="flex flex-wrap gap-2 mb-4">
-              {meta?.genres?.map(g => (
+              {genres.map(g => (
                 <Link key={g} to={`/genre/${g}`} className="text-xs bg-secondary hover:bg-secondary/80 px-3 py-1 rounded-full transition-colors">{g}</Link>
               ))}
             </div>
 
-            {meta?.studios?.length && (
-              <p className="text-sm text-muted-foreground mb-3">Studio: <span className="text-foreground">{meta.studios.join(", ")}</span></p>
+            {studios.length > 0 && (
+              <p className="text-sm text-muted-foreground mb-3">Studio: <span className="text-foreground">{studios.join(", ")}</span></p>
             )}
 
             {desc && (
-              <div className="mb-4">
+              <div className="mb-5">
                 <p className={`text-sm text-foreground/80 leading-relaxed ${showFullDesc ? "" : "line-clamp-4"}`}>{desc}</p>
                 {desc.length > 300 && (
                   <button onClick={() => setShowFullDesc(!showFullDesc)} className="text-xs text-primary hover:underline mt-1">
@@ -144,23 +170,23 @@ export default function AnimeDetailPage() {
             <div className="flex items-center gap-3 flex-wrap">
               <Link
                 to={lastWatched ? `/watch/${encodeURIComponent(data.anime_name)}/${lastWatched.episode}` : `/watch/${encodeURIComponent(data.anime_name)}/1`}
-                className="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-6 py-3 rounded-lg transition-all hover:shadow-[0_0_20px_hsl(var(--primary)_/_0.4)]"
+                className="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-6 py-3 rounded-lg transition-all hover:shadow-[0_0_20px_hsl(var(--primary)_/_0.4)] text-sm"
               >
                 <Play size={18} className="fill-current" />
-                {lastWatched ? `Continue Ep ${lastWatched.episode}` : "Watch Episode 1"}
+                {lastWatched ? `Continue EP ${lastWatched.episode}` : "Watch Episode 1"}
               </Link>
 
               <button
                 onClick={toggleWatchlist}
-                className={`inline-flex items-center gap-2 font-semibold px-5 py-3 rounded-lg border transition-all ${
+                className={`inline-flex items-center gap-2 font-semibold px-5 py-3 rounded-lg border transition-all text-sm ${
                   inWatchlist ? "bg-neon/10 border-neon text-neon" : "bg-secondary border-border hover:border-primary/50"
                 }`}
               >
                 {inWatchlist ? <BookmarkCheck size={18} /> : <Bookmark size={18} />}
-                {inWatchlist ? "In Watchlist" : "Add to Watchlist"}
+                {inWatchlist ? "In Watchlist" : "Watchlist"}
               </button>
 
-              <button onClick={handleShare} className="p-3 bg-secondary border border-border rounded-lg hover:border-primary/50 transition-colors">
+              <button onClick={handleShare} className="p-3 bg-secondary border border-border rounded-lg hover:border-primary/50 transition-colors" title="Copy link">
                 <Share2 size={18} />
               </button>
             </div>
@@ -185,7 +211,7 @@ export default function AnimeDetailPage() {
                 ))}
               </div>
             )}
-            <h2 className="font-display font-bold text-xl mb-3">Episodes</h2>
+            <h2 className="font-display font-bold text-xl mb-3">Episodes ({currentEps.length})</h2>
             <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 gap-2">
               {currentEps.map(ep => (
                 <Link
@@ -205,12 +231,12 @@ export default function AnimeDetailPage() {
         )}
 
         {/* Trailer */}
-        {meta?.trailer?.url && (
+        {trailer && (
           <section className="mt-10">
             <h2 className="font-display font-bold text-xl mb-3">Trailer</h2>
-            <div className="aspect-video max-w-2xl rounded-lg overflow-hidden neon-border">
+            <div className="aspect-video max-w-2xl rounded-xl overflow-hidden neon-border">
               <iframe
-                src={meta.trailer.url.replace("watch?v=", "embed/")}
+                src={trailer.replace("watch?v=", "embed/")}
                 className="w-full h-full"
                 allowFullScreen
                 allow="autoplay"

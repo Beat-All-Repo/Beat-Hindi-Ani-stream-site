@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
-import { fetchAnimeList, searchAnime, AnimeItem } from "@/lib/api";
+import { fetchAnimeList, searchAnime, AnimeItem, getAnimeGenres } from "@/lib/api";
 import Navbar from "@/components/Navbar";
 import AnimeCard from "@/components/AnimeCard";
 import Footer from "@/components/Footer";
@@ -28,7 +28,7 @@ export default function SearchPage() {
 
   const filtered = useMemo(() => {
     if (!activeGenres.length) return anime;
-    return anime.filter(a => activeGenres.some(g => a.meta?.genres?.includes(g)));
+    return anime.filter(a => activeGenres.some(g => getAnimeGenres(a).includes(g)));
   }, [anime, activeGenres]);
 
   const toggleGenre = (g: string) => {
@@ -83,9 +83,12 @@ export default function SearchPage() {
         ) : filtered.length === 0 ? (
           <p className="text-muted-foreground text-center py-20">No anime found</p>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {filtered.map((a, i) => <AnimeCard key={a.anime_name} anime={a} index={i} />)}
-          </div>
+          <>
+            <p className="text-sm text-muted-foreground mb-4">{filtered.length} anime found</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              {filtered.map((a, i) => <AnimeCard key={a.anime_name} anime={a} index={i} />)}
+            </div>
+          </>
         )}
       </div>
       <Footer />

@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
-import { fetchAnimeList, AnimeItem } from "@/lib/api";
+import { fetchAnimeList, AnimeItem, getAnimeGenres } from "@/lib/api";
 import Navbar from "@/components/Navbar";
 import AnimeCard from "@/components/AnimeCard";
 import Footer from "@/components/Footer";
@@ -17,7 +17,7 @@ export default function GenrePage() {
 
   const filtered = useMemo(() => {
     if (!genre) return anime;
-    return anime.filter(a => a.meta?.genres?.some(g => g.toLowerCase() === genre.toLowerCase()));
+    return anime.filter(a => getAnimeGenres(a).some(g => g.toLowerCase() === genre.toLowerCase()));
   }, [anime, genre]);
 
   return (
@@ -32,9 +32,12 @@ export default function GenrePage() {
         ) : filtered.length === 0 ? (
           <p className="text-muted-foreground text-center py-20">No anime found in this genre</p>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {filtered.map((a, i) => <AnimeCard key={a.anime_name} anime={a} index={i} />)}
-          </div>
+          <>
+            <p className="text-sm text-muted-foreground mb-4">{filtered.length} anime found</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              {filtered.map((a, i) => <AnimeCard key={a.anime_name} anime={a} index={i} />)}
+            </div>
+          </>
         )}
       </div>
       <Footer />

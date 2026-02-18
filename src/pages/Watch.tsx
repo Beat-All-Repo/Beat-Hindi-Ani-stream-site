@@ -21,13 +21,15 @@ export default function WatchPage() {
 
   const decodedName = name ? decodeURIComponent(name) : "";
   const epNum = parseInt(episode || "1");
+  // Raw episode string for API (preserves zero-padding like "01")
+  const epRaw = episode || "1";
 
   useEffect(() => {
     if (!decodedName || !epNum) return;
     setLoading(true);
     setError("");
     Promise.all([
-      fetchEpisode(decodedName, epNum),
+      fetchEpisode(decodedName, epRaw),
       fetchAnimeInfo(decodedName),
     ])
       .then(([ep, info]) => {
