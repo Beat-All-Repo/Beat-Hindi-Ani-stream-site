@@ -11,14 +11,21 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const apiKey = Deno.env.get('ANIME_API_KEY');
+    if (!apiKey) {
+      throw new Error('ANIME_API_KEY not configured');
+    }
+
     const url = new URL(req.url);
-    // Strip /anime-proxy prefix and forward remaining path+query to API
     const apiPath = url.pathname.replace('/anime-proxy', '') + url.search;
     const apiUrl = `${ANIME_API}${apiPath}`;
 
     const response = await fetch(apiUrl, {
       method: req.method,
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': apiKey,
+      },
     });
 
     const data = await response.text();
