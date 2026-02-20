@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { fetchAnimeList, AnimeItem, getAnimeName, getAnimeCover, getAnimeGenres, getAnimeScore, getAnimeStatus } from "@/lib/api";
 import { getWatchProgress, getWatchlist, WatchProgress, WatchlistItem } from "@/lib/storage";
+import { useAuth } from "@/contexts/AuthContext";
 import Navbar from "@/components/Navbar";
 import HeroSection from "@/components/HeroSection";
 import AnimeRow from "@/components/AnimeRow";
@@ -8,8 +9,11 @@ import ContinueWatching from "@/components/ContinueWatching";
 import WatchlistSection from "@/components/WatchlistSection";
 import Footer from "@/components/Footer";
 import SkeletonCard from "@/components/SkeletonCard";
+import { useSecurityHardening } from "@/hooks/useSecurityHardening";
 
 export default function Index() {
+  useSecurityHardening();
+  const { user } = useAuth();
   const [anime, setAnime] = useState<AnimeItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -17,14 +21,20 @@ export default function Index() {
   const [watchlistItems, setWatchlistItems] = useState<WatchlistItem[]>([]);
 
   useEffect(() => {
-    setContinueItems(getWatchProgress());
-    setWatchlistItems(getWatchlist());
+    // Continue watching & watchlist only for logged-in users
+    if (user) {
+      setContinueItems(getWatchProgress());
+      setWatchlistItems(getWatchlist());
+    } else {
+      setContinueItems([]);
+      setWatchlistItems([]);
+    }
 
     fetchAnimeList()
       .then(setAnime)
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [user]);
 
   const byGenre = useMemo(() => {
     const map: Record<string, AnimeItem[]> = {};
@@ -81,11 +91,25 @@ export default function Index() {
         <>
           <HeroSection anime={anime} />
           <div className="-mt-16 relative z-10">
-            <ContinueWatching items={continueItems} />
-            <WatchlistSection
-              items={watchlistItems}
-              onRemove={(name) => setWatchlistItems(prev => prev.filter(w => w.animeName !== name))}
-            />
+            {user && continueItems.length > 0 && <ContinueWatching items={continueItems} />}
+            {user && watchlistItems.length > 0 && (
+              <WatchlistSection
+                items={watchlistItems}
+                onRemove={(name) => setWatchlistItems(prev => prev.filter(w => w.animeName !== name))}
+              />
+            )}
+            {!user && (
+              <div className="container py-4">
+                <div className="bg-card/50 border border-border rounded-xl p-4 flex items-center justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    <span className="text-foreground font-medium">Login</span> to save your watch progress & watchlist
+                  </p>
+                  <a href="/auth" className="text-xs bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-lg font-medium transition-colors">
+                    Login
+                  </a>
+                </div>
+              </div>
+            )}
             {trending.length > 0 && <AnimeRow title="🔥 Most Active" anime={trending} linkTo="/search" />}
             <AnimeRow title="⭐ Top Rated" anime={popular} linkTo="/search" />
             {recent.length > 0 && <AnimeRow title="📺 Currently Airing" anime={recent} linkTo="/search" />}
