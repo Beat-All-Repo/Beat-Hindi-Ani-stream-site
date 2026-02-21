@@ -98,6 +98,27 @@ export type Database = {
         }
         Relationships: []
       }
+      site_visits: {
+        Row: {
+          id: string
+          page: string
+          visited_at: string
+          visitor_hash: string | null
+        }
+        Insert: {
+          id?: string
+          page?: string
+          visited_at?: string
+          visitor_hash?: string | null
+        }
+        Update: {
+          id?: string
+          page?: string
+          visited_at?: string
+          visitor_hash?: string | null
+        }
+        Relationships: []
+      }
       telegram_channels: {
         Row: {
           channel_id: string

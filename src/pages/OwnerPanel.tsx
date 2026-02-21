@@ -4,12 +4,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import Navbar from "@/components/Navbar";
-import { Shield, Users, Palette, MessageSquare, Crown, Trash2, Plus, Save } from "lucide-react";
+import { Shield, Users, Palette, MessageSquare, Crown, Trash2, Plus, Save, BarChart3, HelpCircle } from "lucide-react";
 
 export default function OwnerPanel() {
   const { user, isAdmin, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const [tab, setTab] = useState<"theme" | "channels" | "users" | "ads">("theme");
+  const [tab, setTab] = useState<"theme" | "channels" | "users" | "ads" | "analytics">("analytics");
 
   useEffect(() => {
     if (!authLoading && (!user || !isAdmin)) {
@@ -22,6 +22,7 @@ export default function OwnerPanel() {
   if (!isAdmin) return null;
 
   const tabs = [
+    { id: "analytics" as const, icon: BarChart3, label: "Analytics" },
     { id: "theme" as const, icon: Palette, label: "Theme" },
     { id: "channels" as const, icon: MessageSquare, label: "Channels" },
     { id: "users" as const, icon: Users, label: "Users" },
@@ -51,11 +52,91 @@ export default function OwnerPanel() {
           ))}
         </div>
 
+        {tab === "analytics" && <AnalyticsPanel />}
         {tab === "theme" && <ThemePanel />}
         {tab === "channels" && <ChannelsPanel />}
         {tab === "users" && <UsersPanel />}
         {tab === "ads" && <SettingsPanel />}
       </div>
+    </div>
+  );
+}
+
+function AnalyticsPanel() {
+  const [stats, setStats] = useState({ today: 0, month: 0, total: 0, uniqueToday: 0, uniqueMonth: 0, topPages: [] as { page: string; count: number }[] });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadStats();
+  }, []);
+
+  const loadStats = async () => {
+    setLoading(true);
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+    const [todayRes, monthRes, totalRes] = await Promise.all([
+      supabase.from("site_visits").select("visitor_hash", { count: "exact" }).gte("visited_at", todayStart),
+      supabase.from("site_visits").select("visitor_hash", { count: "exact" }).gte("visited_at", monthStart),
+      supabase.from("site_visits").select("*", { count: "exact", head: true }),
+    ]);
+
+    const todayVisitors = todayRes.data || [];
+    const monthVisitors = monthRes.data || [];
+    const uniqueToday = new Set(todayVisitors.map(v => v.visitor_hash)).size;
+    const uniqueMonth = new Set(monthVisitors.map(v => v.visitor_hash)).size;
+
+    // Get top pages
+    const { data: allVisits } = await supabase.from("site_visits").select("page").gte("visited_at", monthStart);
+    const pageCounts: Record<string, number> = {};
+    allVisits?.forEach(v => { pageCounts[v.page] = (pageCounts[v.page] || 0) + 1; });
+    const topPages = Object.entries(pageCounts).map(([page, count]) => ({ page, count })).sort((a, b) => b.count - a.count).slice(0, 5);
+
+    setStats({
+      today: todayRes.count || 0,
+      month: monthRes.count || 0,
+      total: totalRes.count || 0,
+      uniqueToday,
+      uniqueMonth,
+      topPages,
+    });
+    setLoading(false);
+  };
+
+  if (loading) return <div className="bg-card rounded-xl border border-border p-6"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" /></div>;
+
+  return (
+    <div className="space-y-6 max-w-3xl">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        {[
+          { label: "Today Views", value: stats.today, sub: `${stats.uniqueToday} unique` },
+          { label: "Monthly Views", value: stats.month, sub: `${stats.uniqueMonth} unique` },
+          { label: "All-Time Views", value: stats.total, sub: "total" },
+        ].map(s => (
+          <div key={s.label} className="bg-card rounded-xl border border-border p-5">
+            <p className="text-xs text-muted-foreground font-medium">{s.label}</p>
+            <p className="text-3xl font-display font-black mt-1">{s.value.toLocaleString()}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{s.sub}</p>
+          </div>
+        ))}
+      </div>
+
+      {stats.topPages.length > 0 && (
+        <div className="bg-card rounded-xl border border-border p-6">
+          <h3 className="font-display font-bold text-sm mb-4">Top Pages (This Month)</h3>
+          <div className="space-y-2">
+            {stats.topPages.map(p => (
+              <div key={p.page} className="flex items-center justify-between bg-secondary rounded-lg px-4 py-2.5 border border-border">
+                <span className="text-sm font-mono">{p.page}</span>
+                <span className="text-sm font-bold text-primary">{p.count}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <button onClick={loadStats} className="text-xs text-muted-foreground hover:text-primary transition-colors">↻ Refresh Stats</button>
     </div>
   );
 }

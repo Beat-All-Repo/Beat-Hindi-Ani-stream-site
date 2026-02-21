@@ -10,9 +10,11 @@ import WatchlistSection from "@/components/WatchlistSection";
 import Footer from "@/components/Footer";
 import SkeletonCard from "@/components/SkeletonCard";
 import { useSecurityHardening } from "@/hooks/useSecurityHardening";
+import { useVisitTracker } from "@/hooks/useVisitTracker";
 
 export default function Index() {
   useSecurityHardening();
+  useVisitTracker("/");
   const { user } = useAuth();
   const [anime, setAnime] = useState<AnimeItem[]>([]);
   const [loading, setLoading] = useState(true);

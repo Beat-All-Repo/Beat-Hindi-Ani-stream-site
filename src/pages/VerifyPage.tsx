@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
-import { ExternalLink, Shield, CheckCircle, AlertCircle } from "lucide-react";
+import { ExternalLink, Shield, CheckCircle, AlertCircle, HelpCircle } from "lucide-react";
 import logo from "@/assets/logo.png";
 
 interface Channel {
@@ -39,7 +39,7 @@ export default function VerifyPage() {
 
   const handleGenerateCode = () => {
     // Open Telegram bot - user sends /start to get code
-    window.open("https://t.me/BeatAnimeVerifyBot", "_blank");
+    window.open("https://t.me/Beat_AniStream_hub_bot", "_blank");
     setStep("code");
   };
 
@@ -147,7 +147,7 @@ export default function VerifyPage() {
                   </p>
                   
                   <a
-                    href="https://t.me/BeatAnimeVerifyBot"
+                    href="https://t.me/Beat_AniStream_hub_bot"
                     target="_blank"
                     rel="noreferrer"
                     className="flex items-center justify-center gap-2 bg-[#0088cc] hover:bg-[#0077b5] text-white font-semibold py-3 rounded-lg transition-colors"
@@ -192,6 +192,15 @@ export default function VerifyPage() {
           <p className="text-center text-xs text-muted-foreground mt-4">
             By verifying, you agree to stay in our community channels.
           </p>
+
+          <a
+            href="https://t.me/Beat_Anime_Discussion"
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center justify-center gap-2 text-xs text-muted-foreground hover:text-primary transition-colors mt-3"
+          >
+            <HelpCircle size={14} /> Need help? Ask in our Discussion Group
+          </a>
         </div>
       </div>
     </div>

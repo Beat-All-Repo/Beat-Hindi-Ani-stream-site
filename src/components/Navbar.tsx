@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Search, Menu, X, User, LogOut, Shield, Crown } from "lucide-react";
+import { Search, Menu, X, User, LogOut, Shield, Crown, HelpCircle } from "lucide-react";
 import { searchAnime, AnimeItem, getAnimeName } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import logo from "@/assets/logo.png";
@@ -63,6 +63,7 @@ export default function Navbar() {
             </div>
           </div>
           <Link to="/search" className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors">Browse</Link>
+          <a href="https://t.me/Beat_Anime_Discussion" target="_blank" rel="noreferrer" className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors flex items-center gap-1"><HelpCircle size={14} /> Help</a>
         </div>
 
         <div className="flex items-center gap-3">
@@ -150,6 +151,7 @@ export default function Navbar() {
         <div className="md:hidden bg-card/95 backdrop-blur-md border-t border-border p-4 space-y-2">
           <Link to="/" onClick={() => setMenuOpen(false)} className="block px-3 py-2 rounded hover:bg-primary/10 text-sm">Home</Link>
           <Link to="/search" onClick={() => setMenuOpen(false)} className="block px-3 py-2 rounded hover:bg-primary/10 text-sm">Browse</Link>
+          <a href="https://t.me/Beat_Anime_Discussion" target="_blank" rel="noreferrer" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 px-3 py-2 rounded hover:bg-primary/10 text-sm"><HelpCircle size={14} /> Help & Support</a>
           {genres.map(g => (
             <Link key={g} to={`/genre/${g}`} onClick={() => setMenuOpen(false)} className="block px-3 py-2 rounded hover:bg-primary/10 text-sm">{g}</Link>
           ))}
