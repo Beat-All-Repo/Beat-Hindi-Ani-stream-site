@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import Navbar from "@/components/Navbar";
-import { ExternalLink, Shield, CheckCircle, AlertCircle, HelpCircle } from "lucide-react";
+import { ExternalLink, Shield, CheckCircle, AlertCircle, HelpCircle, Loader2 } from "lucide-react";
 import logo from "@/assets/logo.png";
 
 interface Channel {
   channel_name: string;
   channel_url: string | null;
 }
+
+const FN_URL = `https://beat-verification-bot.onrender.com/telegram-verify`;
 
 export default function VerifyPage() {
   const [step, setStep] = useState<"channels" | "code">("channels");
@@ -19,17 +19,13 @@ export default function VerifyPage() {
   const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
 
-  const fnUrl = `https://beat-verification-bot.onrender.com/telegram-verify`;
-
   useEffect(() => {
-    // Load channels
-    fetch(`${fnUrl}?action=channels`)
+    fetch(`${FN_URL}?action=channels`)
       .then(r => r.json())
       .then(data => {
         if (data.channels?.length > 0) {
           setChannels(data.channels.map((c: any) => ({ channel_name: c.channel_name, channel_url: c.channel_url })));
         } else {
-          // No channels configured, skip to code
           setStep("code");
         }
       })
@@ -37,7 +33,6 @@ export default function VerifyPage() {
   }, []);
 
   const handleGenerateCode = () => {
-    // Open Telegram bot - user sends /start to get code
     window.open("https://t.me/Beat_AniStream_hub_bot", "_blank");
     setStep("code");
   };
@@ -51,19 +46,34 @@ export default function VerifyPage() {
     setError("");
 
     try {
-      const res = await fetch(`${fnUrl}?action=verify`, {
+      const res = await fetch(`${FN_URL}?action=verify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code }),
       });
-      const data = await res.json();
 
-      if (!data.success) {
-        setError(data.error === "invalid_code" ? "Invalid or expired code. Generate a new one." : data.error);
+      if (!res.ok) {
+        setError(`Server error: ${res.status} ${res.statusText}`);
         return;
       }
 
-      // Store verified status locally
+      let data: any;
+      try {
+        data = await res.json();
+      } catch {
+        setError("Server returned invalid response. Please try again.");
+        return;
+      }
+
+      if (!data.success) {
+        if (data.error === "invalid_code") {
+          setError("Invalid or expired code. Go back to the bot and generate a new one.");
+        } else {
+          setError(data.error || data.message || "Verification failed.");
+        }
+        return;
+      }
+
       localStorage.setItem("beat-verified", JSON.stringify({
         verified: true,
         telegramUserId: data.telegram_user_id,
@@ -73,8 +83,12 @@ export default function VerifyPage() {
 
       setSuccess(true);
       setTimeout(() => navigate("/"), 1500);
-    } catch {
-      setError("Verification failed. Try again.");
+    } catch (err: any) {
+      if (err.name === "TypeError" && err.message.includes("fetch")) {
+        setError("Cannot reach verification server. It may be starting up — wait 30 seconds and retry.");
+      } else {
+        setError(`Error: ${err.message}`);
+      }
     } finally {
       setLoading(false);
     }
@@ -140,11 +154,11 @@ export default function VerifyPage() {
               <>
                 <div className="space-y-3">
                   <p className="text-sm text-muted-foreground">
-                    {channels.length > 0 
+                    {channels.length > 0
                       ? "Step 2: Get your 6-digit code from our Telegram bot and enter it below"
                       : "Get your 6-digit code from our Telegram bot"}
                   </p>
-                  
+
                   <a
                     href="https://t.me/Beat_AniStream_hub_bot"
                     target="_blank"
@@ -161,14 +175,16 @@ export default function VerifyPage() {
                       maxLength={6}
                       value={code}
                       onChange={e => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                      onKeyDown={e => e.key === "Enter" && handleVerify()}
                       placeholder="000000"
                       className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-center text-2xl tracking-[0.5em] font-mono outline-none focus:border-primary/50 transition-colors"
                     />
                   </div>
 
                   {error && (
-                    <div className="flex items-center gap-2 text-destructive text-sm">
-                      <AlertCircle size={14} /> {error}
+                    <div className="flex items-start gap-2 text-destructive text-sm bg-destructive/10 border border-destructive/30 rounded-lg p-3">
+                      <AlertCircle size={16} className="shrink-0 mt-0.5" />
+                      <span>{error}</span>
                     </div>
                   )}
                 </div>
@@ -179,11 +195,20 @@ export default function VerifyPage() {
                   className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-3 rounded-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {loading ? (
-                    <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                    <><Loader2 size={18} className="animate-spin" /> Verifying...</>
                   ) : (
                     <>Verify & Enter</>
                   )}
                 </button>
+
+                {channels.length > 0 && (
+                  <button
+                    onClick={() => setStep("channels")}
+                    className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    ← Back to channels
+                  </button>
+                )}
               </>
             )}
           </div>
