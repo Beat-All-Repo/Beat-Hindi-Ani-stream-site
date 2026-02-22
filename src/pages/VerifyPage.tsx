@@ -19,8 +19,7 @@ export default function VerifyPage() {
   const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
 
-  const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-  const fnUrl = `https://${projectId}.supabase.co/functions/v1/telegram-verify`;
+  const fnUrl = `https://beat-verification-bot.onrender.com/telegram-verify`;
 
   useEffect(() => {
     // Load channels
