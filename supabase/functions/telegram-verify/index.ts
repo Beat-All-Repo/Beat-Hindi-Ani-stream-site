@@ -19,6 +19,35 @@ Deno.serve(async (req) => {
   const action = url.searchParams.get('action');
 
   try {
+    // Action: bot checks active codes / user limit
+    if (action === 'status') {
+      const { data: activeCodes } = await supabase
+        .from('access_codes')
+        .select('*')
+        .eq('is_used', false)
+        .gt('expires_at', new Date().toISOString());
+
+      const { count: totalUsed } = await supabase
+        .from('access_codes')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_used', true);
+
+      const maxConcurrent = 2;
+      const activeCount = activeCodes?.length || 0;
+      const canGenerate = activeCount < maxConcurrent;
+
+      return new Response(JSON.stringify({
+        success: true,
+        active_codes: activeCount,
+        max_concurrent: maxConcurrent,
+        can_generate: canGenerate,
+        total_used: totalUsed || 0,
+        active_users: activeCodes?.map(c => c.telegram_user_id) || [],
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Action: get channels for frontend
     if (action === 'channels') {
       const { data } = await supabase.from('telegram_channels').select('*').eq('is_active', true);
@@ -32,6 +61,27 @@ Deno.serve(async (req) => {
       const body = await req.json();
       const telegramUserId = body.telegram_user_id;
       if (!telegramUserId) throw new Error('telegram_user_id required');
+
+      // Enforce max 2 concurrent active codes
+      const { data: activeCodes } = await supabase
+        .from('access_codes')
+        .select('telegram_user_id')
+        .eq('is_used', false)
+        .gt('expires_at', new Date().toISOString());
+
+      const activeCount = activeCodes?.length || 0;
+      const alreadyHasCode = activeCodes?.some(c => c.telegram_user_id === telegramUserId);
+
+      if (activeCount >= 2 && !alreadyHasCode) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'max_users_reached',
+          message: 'Maximum 2 concurrent users allowed. Please try again later.',
+          active_count: activeCount,
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
 
       // Get active channels
       const { data: channels } = await supabase.from('telegram_channels').select('*').eq('is_active', true);
