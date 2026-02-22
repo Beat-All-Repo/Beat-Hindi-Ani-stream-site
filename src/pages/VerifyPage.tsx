@@ -8,7 +8,8 @@ interface Channel {
   channel_url: string | null;
 }
 
-const FN_URL = `https://beat-verification-bot.onrender.com/telegram-verify`;
+// ✅ Calls Supabase edge function directly — no CORS issues
+const FN_URL = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/telegram-verify`;
 
 export default function VerifyPage() {
   const [step, setStep] = useState<"channels" | "code">("channels");
@@ -19,12 +20,18 @@ export default function VerifyPage() {
   const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
 
+  // Load required channels on mount
   useEffect(() => {
     fetch(`${FN_URL}?action=channels`)
       .then(r => r.json())
       .then(data => {
-        if (data.channels?.length > 0) {
-          setChannels(data.channels.map((c: any) => ({ channel_name: c.channel_name, channel_url: c.channel_url })));
+        if (data.channels && data.channels.length > 0) {
+          setChannels(
+            data.channels.map((c: any) => ({
+              channel_name: c.channel_name,
+              channel_url: c.channel_url,
+            }))
+          );
         } else {
           setStep("code");
         }
@@ -39,7 +46,7 @@ export default function VerifyPage() {
 
   const handleVerify = async () => {
     if (code.length !== 6) {
-      setError("Enter a 6-digit code");
+      setError("Enter a 6-digit code.");
       return;
     }
     setLoading(true);
@@ -61,34 +68,33 @@ export default function VerifyPage() {
       try {
         data = await res.json();
       } catch {
-        setError("Server returned invalid response. Please try again.");
+        setError("Server returned an invalid response. Please try again.");
         return;
       }
 
       if (!data.success) {
         if (data.error === "invalid_code") {
-          setError("Invalid or expired code. Go back to the bot and generate a new one.");
+          setError("Invalid or expired code. Open the bot and send /start to get a new one.");
         } else {
-          setError(data.error || data.message || "Verification failed.");
+          setError(data.error || data.message || "Verification failed. Please try again.");
         }
         return;
       }
 
-      localStorage.setItem("beat-verified", JSON.stringify({
-        verified: true,
-        telegramUserId: data.telegram_user_id,
-        code,
-        verifiedAt: Date.now(),
-      }));
+      localStorage.setItem(
+        "beat-verified",
+        JSON.stringify({
+          verified: true,
+          telegramUserId: data.telegram_user_id,
+          code,
+          verifiedAt: Date.now(),
+        })
+      );
 
       setSuccess(true);
       setTimeout(() => navigate("/"), 1500);
     } catch (err: any) {
-      if (err.name === "TypeError" && err.message.includes("fetch")) {
-        setError("Cannot reach verification server. It may be starting up — wait 30 seconds and retry.");
-      } else {
-        setError(`Error: ${err.message}`);
-      }
+      setError(`Network error: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -100,7 +106,7 @@ export default function VerifyPage() {
         <div className="text-center space-y-4">
           <CheckCircle size={64} className="text-green-500 mx-auto" />
           <h1 className="font-display font-bold text-2xl">Verified!</h1>
-          <p className="text-muted-foreground">Redirecting...</p>
+          <p className="text-muted-foreground">Redirecting to Beat AniStream...</p>
         </div>
       </div>
     );
@@ -110,23 +116,27 @@ export default function VerifyPage() {
     <div className="min-h-screen bg-background">
       <div className="flex items-center justify-center min-h-screen px-4">
         <div className="w-full max-w-md">
+
+          {/* Header */}
           <div className="text-center mb-8">
             <img src={logo} alt="Beat AniStream" className="w-16 h-16 rounded-xl mx-auto mb-4" />
             <h1 className="font-display font-black text-3xl text-glow-red">Beat AniStream</h1>
             <p className="text-muted-foreground text-sm mt-2">Join our community to access the site</p>
           </div>
 
+          {/* Card */}
           <div className="bg-card rounded-2xl border border-border p-6 space-y-6">
-            <div className="flex items-center gap-3 mb-2">
+            <div className="flex items-center gap-3">
               <Shield className="text-primary" size={24} />
               <h2 className="font-display font-bold text-lg">Community Verification</h2>
             </div>
 
+            {/* Step 1: Join channels */}
             {step === "channels" && channels.length > 0 && (
               <>
                 <div className="space-y-3">
                   <p className="text-sm text-muted-foreground">
-                    Step 1: Join all our Telegram channels first
+                    Step 1: Join all our Telegram channels below
                   </p>
                   {channels.map((ch, i) => (
                     <a
@@ -141,22 +151,24 @@ export default function VerifyPage() {
                     </a>
                   ))}
                 </div>
+
                 <button
                   onClick={handleGenerateCode}
                   className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-3 rounded-lg transition-all"
                 >
-                  I've Joined → Generate Code
+                  I've Joined → Get My Code
                 </button>
               </>
             )}
 
+            {/* Step 2: Enter code */}
             {step === "code" && (
               <>
                 <div className="space-y-3">
                   <p className="text-sm text-muted-foreground">
                     {channels.length > 0
-                      ? "Step 2: Get your 6-digit code from our Telegram bot and enter it below"
-                      : "Get your 6-digit code from our Telegram bot"}
+                      ? "Step 2: Open the bot, send /start, then enter the 6-digit code"
+                      : "Open the bot, send /start, then enter the 6-digit code"}
                   </p>
 
                   <a
@@ -165,13 +177,17 @@ export default function VerifyPage() {
                     rel="noreferrer"
                     className="flex items-center justify-center gap-2 bg-[#0088cc] hover:bg-[#0077b5] text-white font-semibold py-3 rounded-lg transition-colors"
                   >
-                    <ExternalLink size={16} /> Open Telegram Bot
+                    <ExternalLink size={16} />
+                    Open Telegram Bot
                   </a>
 
-                  <div className="pt-2">
-                    <label className="block text-xs font-medium text-muted-foreground mb-1.5">Enter 6-Digit Code</label>
+                  <div className="pt-1">
+                    <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                      Enter 6-Digit Code
+                    </label>
                     <input
                       type="text"
+                      inputMode="numeric"
                       maxLength={6}
                       value={code}
                       onChange={e => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
@@ -197,7 +213,7 @@ export default function VerifyPage() {
                   {loading ? (
                     <><Loader2 size={18} className="animate-spin" /> Verifying...</>
                   ) : (
-                    <>Verify & Enter</>
+                    "Verify & Enter"
                   )}
                 </button>
 
@@ -225,6 +241,7 @@ export default function VerifyPage() {
           >
             <HelpCircle size={14} /> Need help? Ask in our Discussion Group
           </a>
+
         </div>
       </div>
     </div>
