@@ -1,1 +1,7 @@
 project_id = "epgzewpcdqmqpnyvpfzu"
+
+[functions.telegram-verify]
+verify_jwt = false
+
+[functions.anime-proxy]
+verify_jwt = false
