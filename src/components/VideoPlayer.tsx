@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect, useCallback } from "react";
 import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, SkipForward, SkipBack, Loader2, FastForward, Rewind } from "lucide-react";
+import { useVideoBuffer } from "@/hooks/useVideoBuffer";
 
 interface Props {
   src: string;
@@ -33,6 +34,9 @@ export default function VideoPlayer({ src, title, onPrev, onNext, onTimeUpdate, 
   const hideTimer = useRef<ReturnType<typeof setTimeout>>();
 
   const video = videoRef.current;
+
+  // Advanced adaptive buffering
+  const bufferState = useVideoBuffer(videoRef);
 
   useEffect(() => {
     setPlaying(false);
@@ -276,6 +280,12 @@ export default function VideoPlayer({ src, title, onPrev, onNext, onTimeUpdate, 
           {title && <p className="text-sm font-medium truncate">{title}</p>}
           {playbackRate !== 1 && (
             <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded">{playbackRate}x</span>
+          )}
+          {/* Buffer health indicator */}
+          {!bufferState.isBufferHealthy && playing && (
+            <span className="text-xs bg-destructive/20 text-destructive px-2 py-0.5 rounded animate-pulse">
+              Buffering…
+            </span>
           )}
         </div>
 
