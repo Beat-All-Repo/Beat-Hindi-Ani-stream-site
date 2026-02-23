@@ -36,12 +36,10 @@ export default function VerifyPage() {
       const data = await res.json();
 
       if (!data.success) {
-        if (data.error === "max_devices") {
-          setError(data.message || "This code is already used on 2 devices. Generate a new code from the bot.");
-        } else if (data.error === "bot_unavailable") {
+        if (data.error === "bot_unavailable") {
           setError("Verification service is temporarily unavailable. Please try again in a moment.");
         } else {
-          setError("Invalid or expired code. Open the bot, send /start to get a fresh code.");
+          setError(data.message || "Invalid or expired code. Open the bot, send /start to get a fresh code.");
         }
         return;
       }

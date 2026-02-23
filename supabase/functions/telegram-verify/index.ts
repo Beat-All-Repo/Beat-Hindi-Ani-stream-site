@@ -128,9 +128,11 @@ Deno.serve(async (req) => {
         .join('')
         .slice(0, 32);
 
+      // Netflix-style: always pass force=true so the bot kicks the oldest
+      // device when a 3rd one tries to use the same code
       let botData: any;
       try {
-        botData = await callBot('verify', { code, device_id });
+        botData = await callBot('verify', { code, device_id, force: true });
       } catch (err) {
         console.error('Bot API verify failed:', err);
         return json({
@@ -141,15 +143,11 @@ Deno.serve(async (req) => {
       }
 
       if (!botData.ok) {
-        if (String(botData.reason || '').toLowerCase().includes('maximum')) {
-          return json({
-            success:      false,
-            error:        'max_devices',
-            message:      `This code is already used on ${botData.devices_used || 2}/2 devices. Generate a new code from the bot.`,
-            devices_used: botData.devices_used,
-          });
-        }
-        return json({ success: false, error: 'invalid_code' });
+        return json({
+          success: false,
+          error:   botData.reason || 'invalid_code',
+          message: botData.message || 'Invalid or expired code.',
+        });
       }
 
       return json({
@@ -157,6 +155,7 @@ Deno.serve(async (req) => {
         telegram_user_id: botData.telegram_id,
         devices_used: botData.devices_used,
         devices_max:  botData.devices_max,
+        kicked_device: botData.kicked_device || null,
       });
     }
 
