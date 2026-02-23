@@ -213,6 +213,6 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error('Edge function error:', error);
-    return json({ success: false, error: error.message }, 500);
+    return json({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }, 500);
   }
 });

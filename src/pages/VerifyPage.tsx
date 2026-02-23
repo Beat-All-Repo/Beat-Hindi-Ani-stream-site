@@ -35,7 +35,7 @@ export default function VerifyPage() {
 
       const data = await res.json();
 
-      if (!data.ok) {
+      if (!data.success) {
         if (data.error === "max_devices") {
           setError(data.message || "This code is already used on 2 devices. Generate a new code from the bot.");
         } else if (data.error === "bot_unavailable") {
