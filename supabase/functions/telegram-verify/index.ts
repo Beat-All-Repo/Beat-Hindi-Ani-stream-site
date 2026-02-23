@@ -10,7 +10,7 @@ const corsHeaders = {
 //  This function is a pure proxy — no Supabase DB reads/writes for codes.
 //
 //  Required Supabase secrets:
-//    BOT_API_URL    = https://your-bot.onrender.com
+//    BOT_API_URL    = https://beat-verification-bot.onrender.com
 //    BOT_API_SECRET = same value as API_SECRET in your bot's config.py
 //
 //  Endpoints (all proxied to bot):
@@ -211,7 +211,7 @@ Deno.serve(async (req) => {
 
     return json({ success: false, error: `Unknown action: ${action}` }, 400);
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Edge function error:', error);
     return json({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }, 500);
   }
